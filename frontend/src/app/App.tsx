@@ -12,10 +12,11 @@ import { BottomNav } from './components/BottomNav';
 import { FilterDrawer } from './components/activity/FilterDrawer';
 import { AddSpotModal } from './components/activity/AddSpotModal';
 import { AdminPanel } from './components/profile/AdminPanel';
+import { WikiTab } from './components/wiki/WikiTab';
 import { api, ApiSpot, ApiUser } from './api';
 import type { Spot, User, Rating, Workout } from './types';
 
-type View = 'feed' | 'community' | 'activity' | 'progress' | 'profile' | 'spot-detail' | 'admin';
+type View = 'feed' | 'community' | 'activity' | 'progress' | 'profile' | 'spot-detail' | 'admin' | 'wiki';
 
 /** Convert API spot to local Spot type */
 function toSpot(s: ApiSpot): Spot {
@@ -192,6 +193,7 @@ export default function App() {
         </>
       )}
       {currentView === 'progress' && (<><ProgressTab /><BottomNav activeTab="progress" onTabChange={handleTabChange} /></>)}
+      {currentView === 'wiki' && (<><WikiTab /><BottomNav activeTab="wiki" onTabChange={handleTabChange} /></>)}
       {currentView === 'spot-detail' && selectedSpot && (
         <SpotDetailView spot={selectedSpot} onBack={() => setCurrentView('activity')} onRatingSubmit={handleRatingSubmit} onWorkoutSubmit={handleWorkoutSubmit} />
       )}

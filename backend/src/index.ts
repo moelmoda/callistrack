@@ -8,6 +8,7 @@ import workoutsRouter from './routes/workouts';
 import ratingsRouter  from './routes/ratings';
 import usersRouter    from './routes/users';
 import rankingRouter  from './routes/ranking';
+import wikiRouter     from './routes/wiki';
 import pool           from './db/pool';
 
 dotenv.config();
@@ -26,6 +27,7 @@ app.use('/api/workouts', workoutsRouter);
 app.use('/api/ratings',  ratingsRouter);
 app.use('/api/users',    usersRouter);
 app.use('/api/ranking',  rankingRouter);
+app.use('/api/wiki',     wikiRouter);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', async (_req, res) => {

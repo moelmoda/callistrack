@@ -1,8 +1,8 @@
-import { Home, Users, Activity, BarChart3, User } from 'lucide-react';
+import { Home, Users, Activity, BarChart3, User, BookOpen } from 'lucide-react';
 
 interface BottomNavProps {
-  activeTab: 'feed' | 'community' | 'activity' | 'progress' | 'profile';
-  onTabChange: (tab: 'feed' | 'community' | 'activity' | 'progress' | 'profile') => void;
+  activeTab: 'feed' | 'community' | 'activity' | 'progress' | 'profile' | 'wiki';
+  onTabChange: (tab: 'feed' | 'community' | 'activity' | 'progress' | 'profile' | 'wiki') => void;
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
@@ -10,6 +10,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     { id: 'feed', label: 'Feed', icon: Home },
     { id: 'community', label: 'Community', icon: Users },
     { id: 'activity', label: 'Aktivität', icon: Activity },
+    { id: 'wiki', label: 'Wiki', icon: BookOpen },
     { id: 'progress', label: 'Fortschritt', icon: BarChart3 },
     { id: 'profile', label: 'Profil', icon: User },
   ] as const;
@@ -20,12 +21,11 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-
           return (
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center justify-center py-2 px-3 min-w-[64px] transition-colors ${
+              className={`flex flex-col items-center justify-center py-2 px-2 min-w-[52px] transition-colors ${
                 isActive ? 'text-emerald-600' : 'text-gray-600 hover:text-gray-900'
               }`}
             >

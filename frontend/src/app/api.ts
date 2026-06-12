@@ -86,6 +86,18 @@ export const api = {
     update: (body: { bio?: string; isPublic?: boolean }) => request<object>('PATCH', '/users/me', body),
   },
 
+  // ── Wiki
+  wiki: {
+    list: (params?: { search?: string; difficulty?: string; muscle_group?: string }) => {
+      const qs = new URLSearchParams();
+      if (params?.search) qs.append('search', params.search);
+      if (params?.difficulty) qs.append('difficulty', params.difficulty);
+      if (params?.muscle_group) qs.append('muscle_group', params.muscle_group);
+      const q = qs.toString() ? `?${qs.toString()}` : '';
+      return request<WikiExercise[]>('GET', `/wiki${q}`);
+    },
+    get: (id: string) => request<WikiExercise>('GET', `/wiki/${id}`),
+  },
   // ── Ranking ───────────────────────────────────────────────────────────────
   ranking: {
     list: () => request<ApiRankingEntry[]>('GET', '/ranking'),
@@ -145,6 +157,15 @@ export interface ApiUser {
   is_admin: boolean;
   stats: { workouts_completed: number; spots_rated: number; spots_created: number };
   activities: { id: string; type: string; description: string; created_at: string }[];
+}
+
+export interface WikiExercise {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: 'Anfänger' | 'Mittel' | 'Fortgeschritten';
+  muscle_group: string;
+  created_at: string;
 }
 
 export interface ApiRankingEntry {

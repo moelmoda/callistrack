@@ -15,6 +15,7 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
        FROM users WHERE id = $1`,
       [req.user!.userId]
     );
+
     if (!userRes.rowCount) { res.status(404).json({ error: 'Nutzer nicht gefunden' }); return; }
 
     const statsRes = await pool.query(
@@ -51,9 +52,11 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
       `SELECT id, username, bio, level, points, is_public FROM users WHERE id = $1`,
       [req.params.id]
     );
+
     if (!result.rowCount || !result.rows[0].is_public) {
       res.status(404).json({ error: 'Profil nicht gefunden oder privat' }); return;
     }
+
     res.json(result.rows[0]);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -73,7 +76,67 @@ router.patch('/me', authenticate, async (req: Request, res: Response): Promise<v
        WHERE id = $3`,
       [bio ?? null, isPublic !== undefined ? isPublic : null, req.user!.userId]
     );
+
     res.json({ message: 'Profil aktualisiert' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/users/:id/follow
+ * Follow a user.
+ */
+router.post('/:id/follow', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const followerId = req.user!.userId;
+    const followingId = req.params.id;
+
+    if (followerId === followingId) {
+      res.status(400).json({ error: 'Du kannst dir selbst nicht folgen' }); return;
+    }
+
+    await pool.query(
+      `INSERT INTO follows (follower_id, following_id)
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [followerId, followingId]
+    );
+
+    res.json({ message: 'Erfolgreich gefolgt' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/users/:id/follow
+ * Unfollow a user.
+ */
+router.delete('/:id/follow', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    await pool.query(
+      `DELETE FROM follows WHERE follower_id = $1 AND following_id = $2`,
+      [req.user!.userId, req.params.id]
+    );
+
+    res.json({ message: 'Entfolgt' });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * GET /api/users/:id/following
+ * Check if current user follows another user.
+ */
+router.get('/:id/following', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await pool.query(
+      `SELECT 1 FROM follows WHERE follower_id = $1 AND following_id = $2`,
+      [req.user!.userId, req.params.id]
+    );
+
+    res.json({ following: (result.rowCount ?? 0) > 0 });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

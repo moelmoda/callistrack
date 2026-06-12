@@ -3,7 +3,7 @@
  * All calls go through here so the base URL is configured in one place.
  */
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001/api';
+const BASE = import.meta.env.VITE_API_URL || '/api';
 
 function getToken(): string | null {
   return localStorage.getItem('ct_token');

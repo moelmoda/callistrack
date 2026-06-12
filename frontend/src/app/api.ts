@@ -98,6 +98,13 @@ export const api = {
     },
     get: (id: string) => request<WikiExercise>('GET', `/wiki/${id}`),
   },
+  // ── Plans
+  plans: {
+    list: () => request<TrainingPlan[]>('GET', '/plans'),
+    create: (body: { name: string; description?: string; exercises: { name: string; sets: number; reps: number; notes?: string }[] }) =>
+      request<TrainingPlan>('POST', '/plans', body),
+    delete: (id: string) => request<{ message: string }>('DELETE', `/plans/${id}`),
+  },
   // ── Ranking ───────────────────────────────────────────────────────────────
   ranking: {
     list: () => request<ApiRankingEntry[]>('GET', '/ranking'),
@@ -165,6 +172,23 @@ export interface WikiExercise {
   description: string;
   difficulty: 'Anfänger' | 'Mittel' | 'Fortgeschritten';
   muscle_group: string;
+  created_at: string;
+}
+
+export interface PlanExercise {
+  id: string;
+  name: string;
+  sets: number;
+  reps: number;
+  notes?: string;
+  order_index: number;
+}
+
+export interface TrainingPlan {
+  id: string;
+  name: string;
+  description?: string;
+  exercises: PlanExercise[];
   created_at: string;
 }
 

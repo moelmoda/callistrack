@@ -13,10 +13,11 @@ import { FilterDrawer } from './components/activity/FilterDrawer';
 import { AddSpotModal } from './components/activity/AddSpotModal';
 import { AdminPanel } from './components/profile/AdminPanel';
 import { WikiTab } from './components/wiki/WikiTab';
+import { PlansTab } from './components/plans/PlansTab';
 import { api, ApiSpot, ApiUser } from './api';
 import type { Spot, User, Rating, Workout } from './types';
 
-type View = 'feed' | 'community' | 'activity' | 'progress' | 'profile' | 'spot-detail' | 'admin' | 'wiki';
+type View = 'feed' | 'community' | 'activity' | 'progress' | 'profile' | 'spot-detail' | 'admin' | 'wiki' | 'plans';
 
 /** Convert API spot to local Spot type */
 function toSpot(s: ApiSpot): Spot {
@@ -194,6 +195,7 @@ export default function App() {
       )}
       {currentView === 'progress' && (<><ProgressTab /><BottomNav activeTab="progress" onTabChange={handleTabChange} /></>)}
       {currentView === 'wiki' && (<><WikiTab /><BottomNav activeTab="wiki" onTabChange={handleTabChange} /></>)}
+      {currentView === 'plans' && (<><PlansTab /><BottomNav activeTab="plans" onTabChange={handleTabChange} /></>)}
       {currentView === 'spot-detail' && selectedSpot && (
         <SpotDetailView spot={selectedSpot} onBack={() => setCurrentView('activity')} onRatingSubmit={handleRatingSubmit} onWorkoutSubmit={handleWorkoutSubmit} />
       )}

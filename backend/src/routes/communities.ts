@@ -31,14 +31,41 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
 });
 
 /**
+ * GET /api/communities/search?q=name
+ * Search for communities by name.
+ */
+router.get('/search', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const q = req.query.q as string;
+    if (!q || q.trim().length < 2) { res.json([]); return; }
+
+    const result = await pool.query(
+      `SELECT c.*,
+          COUNT(cm.user_id)::int AS member_count,
+          EXISTS(
+            SELECT 1 FROM community_members WHERE community_id = c.id AND user_id = $1
+          ) AS is_member
+         FROM communities c
+         LEFT JOIN community_members cm ON cm.community_id = c.id
+         WHERE c.name ILIKE $2
+         GROUP BY c.id
+         ORDER BY member_count DESC
+         LIMIT 10`,
+      [req.user!.userId, `%${q.trim()}%`]
+    );
+    res.json(result.rows);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * POST /api/communities
  * Creates a new community.
  */
 router.post('/',
   authenticate,
-  [
-    body('name').trim().isLength({ min: 2, max: 150 }).withMessage('Name 2–150 Zeichen'),
-  ],
+  [body('name').trim().isLength({ min: 2, max: 150 }).withMessage('Name 2–150 Zeichen')],
   async (req: Request, res: Response): Promise<void> => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) { res.status(400).json({ errors: errors.array() }); return; }
@@ -49,7 +76,6 @@ router.post('/',
          VALUES ($1, $2, $3) RETURNING *`,
         [req.body.name, req.body.description ?? null, req.user!.userId]
       );
-      // Auto-join creator
       await pool.query(
         `INSERT INTO community_members (community_id, user_id) VALUES ($1, $2)`,
         [result.rows[0].id, req.user!.userId]
@@ -68,8 +94,7 @@ router.post('/',
 router.post('/:id/join', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     await pool.query(
-      `INSERT INTO community_members (community_id, user_id)
-       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      `INSERT INTO community_members (community_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [req.params.id, req.user!.userId]
     );
     res.json({ message: 'Community beigetreten' });

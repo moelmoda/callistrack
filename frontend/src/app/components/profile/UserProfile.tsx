@@ -1,4 +1,4 @@
-import { Trophy, Dumbbell, Star, MapPin } from 'lucide-react';
+import { Trophy, Dumbbell, Star, MapPin, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback } from '../ui/avatar';
 import { Card } from '../ui/card';
 import { Progress } from '../ui/progress';
@@ -141,6 +141,18 @@ export function UserProfile({ user, onTogglePublic }: UserProfileProps) {
               onCheckedChange={onTogglePublic}
             />
           </div>
+        </Card>
+        <Card className="p-6">
+          <button
+            onClick={() => {
+              localStorage.removeItem('ct_token');
+              window.location.reload();
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2 text-red-500 hover:text-red-700 font-medium transition-colors"
+          >
+            <LogOut className="size-5" />
+            Abmelden
+          </button>
         </Card>
       </div>
     </div>

@@ -82,7 +82,7 @@ export const api = {
   // ── Users ─────────────────────────────────────────────────────────────────
   users: {
     me: () => request<ApiUser>('GET', '/users/me'),
-    followingList: () => request<string[]>('GET', '/users/following/list'),
+    followingList: () => request<string[]>('GET', '/users/me/following'),
     get: (id: string) => request<object>('GET', `/users/${id}`),
     update: (body: { bio?: string; isPublic?: boolean }) => request<object>('PATCH', '/users/me', body),
   },

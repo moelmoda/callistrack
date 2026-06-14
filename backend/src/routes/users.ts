@@ -143,3 +143,19 @@ router.get('/:id/following', authenticate, async (req: Request, res: Response): 
 });
 
 export default router;
+
+/**
+ * GET /api/users/me/following
+ * Returns all user IDs the current user follows.
+ */
+router.get('/me/following', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await pool.query(
+      'SELECT following_id FROM follows WHERE follower_id = $1',
+      [req.user!.userId]
+    );
+    res.json(result.rows.map((r: { following_id: string }) => r.following_id));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});

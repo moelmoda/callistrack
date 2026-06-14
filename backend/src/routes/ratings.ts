@@ -14,7 +14,7 @@ router.post(
   '/',
   authenticate,
   [
-    body('spotId').isUUID(),
+    body('spotId').notEmpty().isString(),
     body('stars').isInt({ min: 1, max: 5 }).withMessage('Bewertung 1–5 Sterne'),
   ],
   async (req: Request, res: Response): Promise<void> => {

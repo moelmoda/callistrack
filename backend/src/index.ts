@@ -10,6 +10,7 @@ import usersRouter    from './routes/users';
 import rankingRouter  from './routes/ranking';
 import wikiRouter     from './routes/wiki';
 import plansRouter    from './routes/plans';
+import communitiesRouter from './routes/communities';
 import pool           from './db/pool';
 
 dotenv.config();
@@ -30,6 +31,7 @@ app.use('/api/users',    usersRouter);
 app.use('/api/ranking',  rankingRouter);
 app.use('/api/wiki',     wikiRouter);
 app.use('/api/plans',    plansRouter);
+app.use('/api/communities', communitiesRouter);
 
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', async (_req, res) => {

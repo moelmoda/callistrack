@@ -105,6 +105,13 @@ export const api = {
       request<TrainingPlan>('POST', '/plans', body),
     delete: (id: string) => request<{ message: string }>('DELETE', `/plans/${id}`),
   },
+  // ── Communities
+  communities: {
+    list: () => request<Community[]>('GET', '/communities'),
+    create: (body: { name: string; description?: string }) => request<Community>('POST', '/communities', body),
+    join: (id: string) => request<{ message: string }>('POST', `/communities/${id}/join`),
+    leave: (id: string) => request<{ message: string }>('DELETE', `/communities/${id}/join`),
+  },
   // ── Ranking ───────────────────────────────────────────────────────────────
   ranking: {
     list: () => request<ApiRankingEntry[]>('GET', '/ranking'),
@@ -189,6 +196,16 @@ export interface TrainingPlan {
   name: string;
   description?: string;
   exercises: PlanExercise[];
+  created_at: string;
+}
+
+export interface Community {
+  id: string;
+  name: string;
+  description?: string;
+  created_by?: string;
+  member_count: number;
+  is_member: boolean;
   created_at: string;
 }
 

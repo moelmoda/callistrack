@@ -1,11 +1,12 @@
-import { useState } from 'react';
-import { ArrowLeft, MapPin, Star, Dumbbell } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, MapPin, Star, Dumbbell, ChevronDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import type { Spot, Rating, Workout } from '../../types';
+import { api, WikiExercise } from '../../api';
+import type { Spot, Workout } from '../../types';
 
 interface SpotDetailViewProps {
   spot: Spot;
@@ -21,6 +22,23 @@ export function SpotDetailView({ spot, onBack, onRatingSubmit, onWorkoutSubmit }
   const [workoutReps, setWorkoutReps] = useState('');
   const [workoutSets, setWorkoutSets] = useState('');
   const [showSuccessMessage, setShowSuccessMessage] = useState<string | null>(null);
+  const [wikiExercises, setWikiExercises] = useState<WikiExercise[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [exerciseFilter, setExerciseFilter] = useState('');
+
+  useEffect(() => {
+    api.wiki.list().then(setWikiExercises).catch(console.error);
+  }, []);
+
+  const filteredExercises = wikiExercises.filter(ex =>
+    ex.name.toLowerCase().includes(exerciseFilter.toLowerCase())
+  );
+
+  const handleSelectExercise = (ex: WikiExercise) => {
+    setWorkoutExercise(ex.name);
+    setShowDropdown(false);
+    setExerciseFilter('');
+  };
 
   const handleRatingSubmit = () => {
     if (selectedRating === 0) return;
@@ -41,7 +59,7 @@ export function SpotDetailView({ spot, onBack, onRatingSubmit, onWorkoutSubmit }
       sets: parseInt(workoutSets),
       date: new Date().toISOString(),
     });
-    setShowSuccessMessage('Workout erfolgreich gespeichert! +10 Punkte erhalten');
+    setShowSuccessMessage('Workout gespeichert! +10 Punkte');
     setWorkoutExercise('');
     setWorkoutReps('');
     setWorkoutSets('');
@@ -85,14 +103,7 @@ export function SpotDetailView({ spot, onBack, onRatingSubmit, onWorkoutSubmit }
             <div className="pt-2 flex items-center gap-2">
               <div className="flex">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`size-6 ${
-                      i < Math.floor(spot.rating)
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-gray-300'
-                    }`}
-                  />
+                  <Star key={i} className={`size-6 ${i < Math.floor(spot.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                 ))}
               </div>
               <span className="text-lg font-medium">{spot.rating.toFixed(1)}</span>
@@ -100,6 +111,77 @@ export function SpotDetailView({ spot, onBack, onRatingSubmit, onWorkoutSubmit }
           </div>
         </Card>
 
+        {/* Workout loggen */}
+        <Card className="p-4">
+          <h2 className="font-semibold mb-3">Workout hier loggen</h2>
+          <div className="space-y-3">
+            <div className="relative">
+              <Label htmlFor="exercise">Übung</Label>
+              <div className="relative mt-1">
+                <Input
+                  id="exercise"
+                  value={workoutExercise}
+                  onChange={(e) => {
+                    setWorkoutExercise(e.target.value);
+                    setExerciseFilter(e.target.value);
+                    setShowDropdown(true);
+                  }}
+                  onFocus={() => setShowDropdown(true)}
+                  placeholder="Übung wählen oder eingeben..."
+                  autoComplete="off"
+                />
+                <button
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  <ChevronDown className="size-4 text-gray-400" />
+                </button>
+              </div>
+
+              {/* Dropdown */}
+              {showDropdown && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto z-50">
+                  {filteredExercises.length === 0 ? (
+                    <p className="text-sm text-gray-400 p-3">Keine Übungen gefunden</p>
+                  ) : (
+                    filteredExercises.map((ex) => (
+                      <button
+                        key={ex.id}
+                        className="w-full text-left px-3 py-2 hover:bg-emerald-50 border-b last:border-b-0 flex items-center justify-between"
+                        onClick={() => handleSelectExercise(ex)}
+                      >
+                        <span className="text-sm font-medium">{ex.name}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          ex.difficulty === 'Anfänger' ? 'bg-green-100 text-green-700' :
+                          ex.difficulty === 'Mittel' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {ex.difficulty}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="reps">Wiederholungen</Label>
+                <Input id="reps" type="number" value={workoutReps} onChange={(e) => setWorkoutReps(e.target.value)} placeholder="10" />
+              </div>
+              <div>
+                <Label htmlFor="sets">Sätze</Label>
+                <Input id="sets" type="number" value={workoutSets} onChange={(e) => setWorkoutSets(e.target.value)} placeholder="3" />
+              </div>
+            </div>
+            <Button onClick={handleWorkoutSubmit} disabled={!workoutExercise || !workoutReps || !workoutSets} className="w-full">
+              Workout speichern
+            </Button>
+          </div>
+        </Card>
+
+        {/* Bewertung */}
         <Card className="p-4">
           <h2 className="font-semibold mb-3">Bewertung abgeben</h2>
           <div className="space-y-3">
@@ -107,31 +189,15 @@ export function SpotDetailView({ spot, onBack, onRatingSubmit, onWorkoutSubmit }
               <Label>Deine Bewertung</Label>
               <div className="flex gap-1 mt-1">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setSelectedRating(i + 1)}
-                    className="p-1 hover:scale-110 transition-transform"
-                  >
-                    <Star
-                      className={`size-8 ${
-                        i < selectedRating
-                          ? 'fill-yellow-400 text-yellow-400'
-                          : 'text-gray-300'
-                      }`}
-                    />
+                  <button key={i} onClick={() => setSelectedRating(i + 1)} className="p-1 hover:scale-110 transition-transform">
+                    <Star className={`size-8 ${i < selectedRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <Label htmlFor="comment">Kurzer Kommentar (optional)</Label>
-              <Textarea
-                id="comment"
-                value={ratingComment}
-                onChange={(e) => setRatingComment(e.target.value)}
-                placeholder="Was hat dir gefallen oder was könnte besser sein?"
-                rows={3}
-              />
+              <Label htmlFor="comment">Kommentar (optional)</Label>
+              <Textarea id="comment" value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} placeholder="Was hat dir gefallen?" rows={3} />
             </div>
             <Button onClick={handleRatingSubmit} disabled={selectedRating === 0} className="w-full">
               Bewertung speichern
@@ -139,76 +205,30 @@ export function SpotDetailView({ spot, onBack, onRatingSubmit, onWorkoutSubmit }
           </div>
         </Card>
 
-        <Card className="p-4">
-          <h2 className="font-semibold mb-3">Workout hier loggen</h2>
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="exercise">Übung</Label>
-              <Input
-                id="exercise"
-                value={workoutExercise}
-                onChange={(e) => setWorkoutExercise(e.target.value)}
-                placeholder="z.B. Pull-ups"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label htmlFor="reps">Wiederholungen</Label>
-                <Input
-                  id="reps"
-                  type="number"
-                  value={workoutReps}
-                  onChange={(e) => setWorkoutReps(e.target.value)}
-                  placeholder="10"
-                />
-              </div>
-              <div>
-                <Label htmlFor="sets">Sätze</Label>
-                <Input
-                  id="sets"
-                  type="number"
-                  value={workoutSets}
-                  onChange={(e) => setWorkoutSets(e.target.value)}
-                  placeholder="3"
-                />
-              </div>
-            </div>
-            <Button onClick={handleWorkoutSubmit} className="w-full">
-              Workout speichern
-            </Button>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <h2 className="font-semibold mb-3">Vergangene Bewertungen</h2>
-          <div className="space-y-3">
-            {spot.ratings.map((rating) => (
-              <div key={rating.id} className="border-b last:border-b-0 pb-3 last:pb-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">{rating.username}</span>
-                  <div className="flex">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`size-3 ${
-                          i < rating.stars
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
+        {/* Vergangene Bewertungen */}
+        {spot.ratings.length > 0 && (
+          <Card className="p-4">
+            <h2 className="font-semibold mb-3">Bewertungen</h2>
+            <div className="space-y-3">
+              {spot.ratings.map((rating) => (
+                <div key={rating.id} className="border-b last:border-b-0 pb-3 last:pb-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-sm">{rating.username}</span>
+                    <div className="flex">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`size-3 ${i < rating.stars ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                      ))}
+                    </div>
+                    <span className="text-xs text-gray-500 ml-auto">
+                      {new Date(rating.date).toLocaleDateString('de-DE')}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500 ml-auto">
-                    {new Date(rating.date).toLocaleDateString('de-DE')}
-                  </span>
+                  {rating.comment && <p className="text-sm text-gray-600">{rating.comment}</p>}
                 </div>
-                {rating.comment && (
-                  <p className="text-sm text-gray-600">{rating.comment}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </Card>
+              ))}
+            </div>
+          </Card>
+        )}
       </div>
 
       {showSuccessMessage && (

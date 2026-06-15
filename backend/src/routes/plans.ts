@@ -68,7 +68,20 @@ router.post('/',
       }
 
       await client.query('COMMIT');
-      res.status(201).json(plan);
+      // Fetch plan with exercises
+      const planWithExercises = await pool.query(
+        `SELECT p.*, 
+          json_agg(
+            json_build_object('id', e.id, 'name', e.name, 'sets', e.sets, 'reps', e.reps, 'notes', e.notes, 'order_index', e.order_index)
+            ORDER BY e.order_index
+          ) FILTER (WHERE e.id IS NOT NULL) AS exercises
+         FROM training_plans p
+         LEFT JOIN plan_exercises e ON e.plan_id = p.id
+         WHERE p.id = $1
+         GROUP BY p.id`,
+        [plan.id]
+      );
+      res.status(201).json(planWithExercises.rows[0]);
     } catch (err: any) {
       await client.query('ROLLBACK');
       res.status(500).json({ error: err.message });

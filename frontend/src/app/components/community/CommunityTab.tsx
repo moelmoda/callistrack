@@ -11,14 +11,13 @@ export function CommunityTab() {
   const [communityResults, setCommunityResults] = useState<Community[]>([]);
   const [searching, setSearching] = useState(false);
   const [communities, setCommunities] = useState<Community[]>([]);
+  const [topUsers, setTopUsers] = useState<ApiRankingEntry[]>([]);
   const [following, setFollowing] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [saving, setSaving] = useState(false);
-
-  // Community Posts
   const [selectedCommunity, setSelectedCommunity] = useState<Community | null>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [newPost, setNewPost] = useState('');
@@ -28,9 +27,11 @@ export function CommunityTab() {
     Promise.all([
       api.communities.list(),
       api.users.followingList(),
-    ]).then(([communitiesData, followingIds]) => {
+      api.ranking.list(),
+    ]).then(([communitiesData, followingIds, usersData]) => {
       setCommunities(communitiesData);
       setFollowing(new Set(followingIds));
+      setTopUsers(usersData.slice(0, 6));
     }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
@@ -85,9 +86,7 @@ export function CommunityTab() {
           ? { ...p, is_liked: !p.is_liked, likes: p.is_liked ? p.likes - 1 : p.likes + 1 }
           : p
       ));
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const toggleFollow = async (userId: string) => {
@@ -109,16 +108,10 @@ export function CommunityTab() {
       } else {
         await api.communities.join(community.id);
       }
-      setCommunities(prev => prev.map(c =>
-        c.id === community.id
-          ? { ...c, is_member: !c.is_member, member_count: c.is_member ? c.member_count - 1 : c.member_count + 1 }
-          : c
-      ));
-      setCommunityResults(prev => prev.map(c =>
-        c.id === community.id
-          ? { ...c, is_member: !c.is_member, member_count: c.is_member ? c.member_count - 1 : c.member_count + 1 }
-          : c
-      ));
+      const updated = { ...community, is_member: !community.is_member, member_count: community.is_member ? community.member_count - 1 : community.member_count + 1 };
+      setCommunities(prev => prev.map(c => c.id === community.id ? updated : c));
+      setCommunityResults(prev => prev.map(c => c.id === community.id ? updated : c));
+      if (selectedCommunity?.id === community.id) setSelectedCommunity(updated);
     } catch (err) { console.error(err); }
   };
 
@@ -138,11 +131,10 @@ export function CommunityTab() {
     { id: '2', title: '30 Tage Muscle-Up', description: 'Lerne den Muscle-Up in 30 Tagen', participants: 156, daysLeft: 12, progress: 40 },
   ];
 
-  const suggestedCommunities = communities.filter(c => !c.is_member).slice(0, 3);
   const joinedCommunities = communities.filter(c => c.is_member);
+  const notJoinedCommunities = communities.filter(c => !c.is_member);
   const isSearching = searchQuery.trim().length >= 2;
 
-  // Community Detail View
   if (selectedCommunity) {
     return (
       <div className="size-full overflow-y-auto bg-gray-50">
@@ -158,45 +150,28 @@ export function CommunityTab() {
             {selectedCommunity.is_member ? 'Verlassen' : 'Beitreten'}
           </Button>
         </div>
-
         <div className="p-4 space-y-4">
-          {/* Post erstellen - nur für Mitglieder */}
           {selectedCommunity.is_member && (
             <Card className="p-4">
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <textarea
-                    value={newPost}
-                    onChange={e => setNewPost(e.target.value)}
-                    placeholder="Was möchtest du teilen?"
-                    rows={3}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
-                  />
-                  <Button size="sm" className="mt-2 w-full" onClick={handleCreatePost} disabled={!newPost.trim()}>
-                    <Send className="size-4 mr-1" />
-                    Posten
-                  </Button>
-                </div>
-              </div>
+              <textarea value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Was möchtest du teilen?" rows={3} className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
+              <Button size="sm" className="mt-2 w-full" onClick={handleCreatePost} disabled={!newPost.trim()}>
+                <Send className="size-4 mr-1" />Posten
+              </Button>
             </Card>
           )}
-
-          {/* Posts */}
           {loadingPosts ? (
             <p className="text-center text-gray-500 py-4">Lädt...</p>
           ) : posts.length === 0 ? (
             <Card className="p-6 text-center text-gray-500">
               <p>Noch keine Posts.</p>
-              {selectedCommunity.is_member && <p className="text-sm mt-1">Sei der Erste und teile etwas!</p>}
+              {selectedCommunity.is_member && <p className="text-sm mt-1">Sei der Erste!</p>}
             </Card>
           ) : (
             posts.map(post => (
               <Card key={post.id} className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Avatar className="size-8">
-                    <AvatarFallback className="bg-emerald-600 text-white text-xs">
-                      {post.username.substring(0, 2).toUpperCase()}
-                    </AvatarFallback>
+                    <AvatarFallback className="bg-emerald-600 text-white text-xs">{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="font-semibold text-sm">{post.username}</div>
@@ -204,10 +179,7 @@ export function CommunityTab() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-700 mb-3">{post.content}</p>
-                <button
-                  onClick={() => handleLikePost(post)}
-                  className={`flex items-center gap-1 text-sm ${post.is_liked ? 'text-red-500' : 'text-gray-400'}`}
-                >
+                <button onClick={() => handleLikePost(post)} className={`flex items-center gap-1 text-sm ${post.is_liked ? 'text-red-500' : 'text-gray-400'}`}>
                   <Heart className={`size-4 ${post.is_liked ? 'fill-red-500' : ''}`} />
                   <span>{post.likes}</span>
                 </button>
@@ -225,18 +197,8 @@ export function CommunityTab() {
         <h1 className="text-2xl font-bold mb-3">COMMUNITY</h1>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Nutzer oder Community suchen..."
-            value={searchQuery}
-            onChange={e => handleSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          {searchQuery && (
-            <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X className="size-4 text-gray-400" />
-            </button>
-          )}
+          <input type="text" placeholder="Nutzer oder Community suchen..." value={searchQuery} onChange={e => handleSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          {searchQuery && <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2"><X className="size-4 text-gray-400" /></button>}
         </div>
       </div>
 
@@ -248,7 +210,7 @@ export function CommunityTab() {
             {searching ? (
               <p className="text-center text-gray-500 py-4">Suche...</p>
             ) : userResults.length === 0 && communityResults.length === 0 ? (
-              <Card className="p-4 text-center text-gray-500">Keine Ergebnisse für "{searchQuery}"</Card>
+              <Card className="p-4 text-center text-gray-500">Keine Ergebnisse</Card>
             ) : (
               <div className="space-y-4">
                 {userResults.length > 0 && (
@@ -258,11 +220,7 @@ export function CommunityTab() {
                       {userResults.map(user => (
                         <Card key={user.id} className="p-3">
                           <div className="flex items-center gap-3">
-                            <Avatar className="size-10">
-                              <AvatarFallback className="bg-emerald-600 text-white text-sm">
-                                {user.username.substring(0, 2).toUpperCase()}
-                              </AvatarFallback>
-                            </Avatar>
+                            <Avatar className="size-10"><AvatarFallback className="bg-emerald-600 text-white text-sm">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback></Avatar>
                             <div className="flex-1">
                               <div className="font-semibold">{user.username}</div>
                               <div className="text-xs text-gray-500">Level {user.level} • {user.points} Punkte</div>
@@ -283,9 +241,7 @@ export function CommunityTab() {
                       {communityResults.map(community => (
                         <Card key={community.id} className="p-3">
                           <div className="flex items-center gap-3">
-                            <div className="size-10 rounded-full bg-emerald-600 flex items-center justify-center">
-                              <Users className="size-5 text-white" />
-                            </div>
+                            <div className="size-10 rounded-full bg-emerald-600 flex items-center justify-center"><Users className="size-5 text-white" /></div>
                             <div className="flex-1">
                               <div className="font-semibold">{community.name}</div>
                               <div className="text-xs text-gray-500">{community.member_count} Mitglieder</div>
@@ -312,26 +268,16 @@ export function CommunityTab() {
               {challenges.map((challenge) => (
                 <Card key={challenge.id} className="p-4">
                   <div className="flex items-start gap-3">
-                    <div className="size-12 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
-                      <Trophy className="size-6 text-white" />
-                    </div>
+                    <div className="size-12 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0"><Trophy className="size-6 text-white" /></div>
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1">{challenge.title}</h3>
                       <p className="text-sm text-gray-600 mb-3">{challenge.description}</p>
                       <div className="mb-2">
-                        <div className="flex justify-between text-xs text-gray-600 mb-1">
-                          <span>Fortschritt</span>
-                          <span>{challenge.progress}%</span>
-                        </div>
-                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-600" style={{ width: `${challenge.progress}%` }} />
-                        </div>
+                        <div className="flex justify-between text-xs text-gray-600 mb-1"><span>Fortschritt</span><span>{challenge.progress}%</span></div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden"><div className="h-full bg-emerald-600" style={{ width: `${challenge.progress}%` }} /></div>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-1 text-gray-600">
-                          <Users className="size-4" />
-                          <span>{challenge.participants} Teilnehmer</span>
-                        </div>
+                        <div className="flex items-center gap-1 text-gray-600"><Users className="size-4" /><span>{challenge.participants} Teilnehmer</span></div>
                         <div className="text-emerald-600 font-medium">{challenge.daysLeft} Tage übrig</div>
                       </div>
                     </div>
@@ -350,9 +296,7 @@ export function CommunityTab() {
               {joinedCommunities.map(community => (
                 <Card key={community.id} className="p-4 cursor-pointer hover:shadow-md transition-shadow" onClick={() => openCommunity(community)}>
                   <div className="flex items-center gap-3">
-                    <div className="size-12 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0">
-                      <Users className="size-6 text-white" />
-                    </div>
+                    <div className="size-12 rounded-full bg-emerald-600 flex items-center justify-center flex-shrink-0"><Users className="size-6 text-white" /></div>
                     <div className="flex-1">
                       <h3 className="font-semibold">{community.name}</h3>
                       {community.description && <p className="text-xs text-gray-500">{community.description}</p>}
@@ -372,8 +316,7 @@ export function CommunityTab() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">COMMUNITIES ENTDECKEN</h2>
               <Button size="sm" variant="outline" onClick={() => setShowCreateForm(!showCreateForm)}>
-                <Plus className="size-4 mr-1" />
-                Neu
+                <Plus className="size-4 mr-1" />Neu
               </Button>
             </div>
 
@@ -395,16 +338,14 @@ export function CommunityTab() {
 
             {loading ? (
               <p className="text-center text-gray-500 py-4">Lädt...</p>
-            ) : suggestedCommunities.length === 0 ? (
-              <Card className="p-4 text-center text-gray-500">Du bist bereits in allen Communities!</Card>
+            ) : notJoinedCommunities.length === 0 ? (
+              <Card className="p-4 text-center text-gray-500">Du bist bereits in allen Communities! Erstelle eine neue.</Card>
             ) : (
               <div className="space-y-3">
-                {suggestedCommunities.map(community => (
+                {notJoinedCommunities.map(community => (
                   <Card key={community.id} className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="size-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                        <Users className="size-6 text-white" />
-                      </div>
+                      <div className="size-12 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0"><Users className="size-6 text-white" /></div>
                       <div className="flex-1">
                         <h3 className="font-semibold">{community.name}</h3>
                         {community.description && <p className="text-xs text-gray-500">{community.description}</p>}
@@ -419,15 +360,30 @@ export function CommunityTab() {
           </section>
         )}
 
-        {/* Nutzer */}
+        {/* Nutzer aus Ranking */}
         {!isSearching && (
           <section>
             <h2 className="text-lg font-bold mb-4">NUTZER</h2>
             {loading ? (
               <p className="text-center text-gray-500 py-4">Lädt...</p>
+            ) : topUsers.length === 0 ? (
+              <Card className="p-4 text-center text-gray-500">Keine Nutzer gefunden</Card>
             ) : (
               <div className="grid grid-cols-2 gap-3">
-                {communities.slice(0, 4).map((_, i) => null)}
+                {topUsers.map(user => (
+                  <Card key={user.id} className="p-4 text-center">
+                    <Avatar className="size-16 mx-auto mb-3">
+                      <AvatarFallback className="bg-emerald-600 text-white text-lg">{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <h3 className="font-semibold mb-1">{user.username}</h3>
+                    <div className="flex items-center justify-center gap-1 text-xs text-gray-600 mb-3">
+                      <Award className="size-3" /><span>Level {user.level}</span><span>•</span><span>{user.points} Punkte</span>
+                    </div>
+                    <Button size="sm" variant={following.has(user.id) ? 'default' : 'outline'} className="w-full" onClick={() => toggleFollow(user.id)}>
+                      {following.has(user.id) ? <><UserCheck className="size-4 mr-1" />Gefolgt</> : <><UserPlus className="size-4 mr-1" />Folgen</>}
+                    </Button>
+                  </Card>
+                ))}
               </div>
             )}
           </section>

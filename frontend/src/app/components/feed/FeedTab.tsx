@@ -1,23 +1,83 @@
 import { useEffect, useState } from 'react';
-import { Calendar, MapPin, Users, TrendingUp } from 'lucide-react';
+import { Calendar, MapPin, Users, TrendingUp, Plus, X } from 'lucide-react';
 import { Card } from '../ui/card';
-import { api, ApiWorkout } from '../../api';
+import { Button } from '../ui/button';
+import { api, ApiWorkout, ApiEvent } from '../../api';
 
-export function FeedTab() {
+interface FeedTabProps {
+  isAdmin?: boolean;
+}
+
+export function FeedTab({ isAdmin }: FeedTabProps) {
   const [workouts, setWorkouts] = useState<ApiWorkout[]>([]);
+  const [events, setEvents] = useState<ApiEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateEvent, setShowCreateEvent] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [newLocation, setNewLocation] = useState('');
+  const [newDate, setNewDate] = useState('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    api.workouts.myWorkouts()
-      .then(data => setWorkouts(data))
-      .catch(console.error)
+    Promise.all([
+      api.workouts.myWorkouts(),
+      api.events.list(),
+    ]).then(([workoutsData, eventsData]) => {
+      setWorkouts(workoutsData);
+      setEvents(eventsData);
+    }).catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const events = [
-    { id: '1', title: 'Street Workout Battle Mainz', date: '15. Mai 2026', location: 'Mainz Volkspark', participants: 24, image: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-    { id: '2', title: 'Calisthenics Beginner Workshop', date: '22. Mai 2026', location: 'Hartenberg-Park', participants: 12, image: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
-  ];
+  const handleJoinEvent = async (event: ApiEvent) => {
+    try {
+      if (event.is_joined) {
+        await api.events.leave(event.id);
+      } else {
+        await api.events.join(event.id);
+      }
+      setEvents(prev => prev.map(e =>
+        e.id === event.id
+          ? { ...e, is_joined: !e.is_joined, participant_count: e.is_joined ? e.participant_count - 1 : e.participant_count + 1 }
+          : e
+      ));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    try {
+      await api.events.delete(id);
+      setEvents(prev => prev.filter(e => e.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateEvent = async () => {
+    if (!newTitle || !newLocation || !newDate) return;
+    setSaving(true);
+    try {
+      const created = await api.events.create({
+        title: newTitle,
+        description: newDesc || undefined,
+        location: newLocation,
+        event_date: new Date(newDate).toISOString(),
+      });
+      setEvents(prev => [...prev, { ...created, participant_count: 0, is_joined: false }]);
+      setNewTitle('');
+      setNewDesc('');
+      setNewLocation('');
+      setNewDate('');
+      setShowCreateEvent(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const news = [
     { id: '1', title: 'Neue Trainingsgeräte im Volkspark', excerpt: 'Die Stadt Mainz hat den Calisthenics-Park im Volkspark um zusätzliche Ringe erweitert.', date: '02.05.2026', category: 'Spots' },
@@ -32,7 +92,7 @@ export function FeedTab() {
 
       <div className="p-4 space-y-6">
 
-        {/* Meine Workouts */}
+        {/* Aktivitäten */}
         <section>
           <h2 className="text-lg font-bold mb-4">MEINE AKTIVITÄTEN</h2>
           {loading ? (
@@ -40,7 +100,7 @@ export function FeedTab() {
           ) : workouts.length === 0 ? (
             <Card className="p-6 text-center text-gray-500">
               <TrendingUp className="size-10 mx-auto mb-2 text-gray-300" />
-              <p>Noch keine Workouts. Starte dein erstes Training auf der Karte!</p>
+              <p>Noch keine Workouts. Starte dein erstes Training!</p>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -72,31 +132,106 @@ export function FeedTab() {
           )}
         </section>
 
-        {/* Events - nur anzeigen, kein Teilnehmen */}
+        {/* Events */}
         <section>
-          <h2 className="text-lg font-bold mb-4">EVENTS</h2>
-          <div className="space-y-3">
-            {events.map((event) => (
-              <Card key={event.id} className="overflow-hidden">
-                <div className="h-32" style={{ background: event.image }} />
-                <div className="p-4">
-                  <h3 className="font-semibold mb-2">{event.title}</h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                    <Calendar className="size-4" />
-                    <span>{event.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                    <MapPin className="size-4" />
-                    <span>{event.location}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                    <Users className="size-4" />
-                    <span>{event.participants} Teilnehmer</span>
-                  </div>
-                </div>
-              </Card>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold">EVENTS</h2>
+            {isAdmin && (
+              <Button size="sm" onClick={() => setShowCreateEvent(!showCreateEvent)}>
+                <Plus className="size-4 mr-1" />
+                Event erstellen
+              </Button>
+            )}
           </div>
+
+          {/* Event erstellen Form - nur für Admin */}
+          {isAdmin && showCreateEvent && (
+            <Card className="p-4 mb-3 border-2 border-emerald-500">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">Neues Event</h3>
+                <button onClick={() => setShowCreateEvent(false)}><X className="size-4 text-gray-400" /></button>
+              </div>
+              <div className="space-y-2 mb-3">
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  placeholder="Titel *"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <input
+                  type="text"
+                  value={newDesc}
+                  onChange={e => setNewDesc(e.target.value)}
+                  placeholder="Beschreibung (optional)"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <input
+                  type="text"
+                  value={newLocation}
+                  onChange={e => setNewLocation(e.target.value)}
+                  placeholder="Ort *"
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+                <input
+                  type="datetime-local"
+                  value={newDate}
+                  onChange={e => setNewDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <Button className="w-full" onClick={handleCreateEvent} disabled={saving || !newTitle || !newLocation || !newDate}>
+                {saving ? 'Erstellen...' : 'Event erstellen'}
+              </Button>
+            </Card>
+          )}
+
+          {loading ? (
+            <p className="text-center text-gray-500 py-4">Lädt...</p>
+          ) : events.length === 0 ? (
+            <Card className="p-4 text-center text-gray-500">Keine Events geplant</Card>
+          ) : (
+            <div className="space-y-3">
+              {events.map((event) => (
+                <Card key={event.id} className="overflow-hidden">
+                  <div className="h-24 bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center">
+                    <h3 className="text-white font-bold text-center px-4">{event.title}</h3>
+                  </div>
+                  <div className="p-4">
+                    {event.description && <p className="text-sm text-gray-600 mb-2">{event.description}</p>}
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                      <Calendar className="size-4" />
+                      <span>{new Date(event.event_date).toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                      <MapPin className="size-4" />
+                      <span>{event.location}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Users className="size-4" />
+                        <span>{event.participant_count} Teilnehmer</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {isAdmin && (
+                          <Button size="sm" variant="outline" className="text-red-500 border-red-300" onClick={() => handleDeleteEvent(event.id)}>
+                            Löschen
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant={event.is_joined ? 'default' : 'outline'}
+                          onClick={() => handleJoinEvent(event)}
+                        >
+                          {event.is_joined ? 'Abmelden' : 'Teilnehmen'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* News */}

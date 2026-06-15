@@ -183,7 +183,7 @@ export default function App() {
 
   return (
     <div className="size-full flex flex-col bg-white">
-      {currentView === 'feed' && (<><FeedTab /><BottomNav activeTab="feed" onTabChange={handleTabChange} /></>)}
+      {currentView === 'feed' && (<><FeedTab isAdmin={isAdmin} /><BottomNav activeTab="feed" onTabChange={handleTabChange} /></>)}
       {currentView === 'community' && (<><CommunityTab /><BottomNav activeTab="community" onTabChange={handleTabChange} /></>)}
       {currentView === 'activity' && (
         <>

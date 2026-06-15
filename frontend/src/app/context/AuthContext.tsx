@@ -46,7 +46,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await api.auth.login({ email, password });
     localStorage.setItem('ct_token', res.token);
     setToken(res.token);
-    setUser(res.user);
+    setUser({
+      id: (res.user as any).id,
+      username: (res.user as any).username,
+      email: (res.user as any).email ?? '',
+      level: (res.user as any).level,
+      points: (res.user as any).points,
+      isPublic: (res.user as any).is_public,
+      isAdmin: (res.user as any).is_admin,
+    });
   };
 
   const register = async (username: string, email: string, password: string) => {

@@ -117,6 +117,15 @@ export const api = {
     join: (id: string) => request<{ message: string }>('POST', `/communities/${id}/join`),
     leave: (id: string) => request<{ message: string }>('DELETE', `/communities/${id}/join`),
   },
+  // ── Events
+  events: {
+    list: () => request<ApiEvent[]>('GET', '/events'),
+    create: (body: { title: string; description?: string; location: string; event_date: string }) =>
+      request<ApiEvent>('POST', '/events', body),
+    join: (id: string) => request<{ message: string }>('POST', '/events/' + id + '/join'),
+    leave: (id: string) => request<{ message: string }>('DELETE', '/events/' + id + '/join'),
+    delete: (id: string) => request<{ message: string }>('DELETE', '/events/' + id),
+  },
   // ── Ranking ───────────────────────────────────────────────────────────────
   ranking: {
     list: () => request<ApiRankingEntry[]>('GET', '/ranking'),
@@ -211,6 +220,18 @@ export interface Community {
   created_by?: string;
   member_count: number;
   is_member: boolean;
+  created_at: string;
+}
+
+export interface ApiEvent {
+  id: string;
+  title: string;
+  description?: string;
+  location: string;
+  event_date: string;
+  creator_name?: string;
+  participant_count: number;
+  is_joined: boolean;
   created_at: string;
 }
 

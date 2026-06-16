@@ -46,6 +46,22 @@ router.get('/me', authenticate, async (req: Request, res: Response): Promise<voi
  * GET /api/users/:id
  * Public profile.
  */
+/**
+ * GET /api/users/me/following
+ * Returns list of user IDs that the current user follows.
+ */
+router.get('/me/following', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await pool.query(
+      'SELECT following_id FROM follows WHERE follower_id = $1',
+      [req.user!.userId]
+    );
+    res.json(result.rows.map((r: any) => r.following_id));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/search', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const q = req.query.q as string;
